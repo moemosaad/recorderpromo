@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
-import socketIOClient from "socket.io-client";
 import Record from "./components/record.jsx";
 import RecordList from "./components/recordList.jsx";
 import AudioPlayer from "./components/audioplayer.jsx";
@@ -13,32 +12,26 @@ class App extends React.Component {
       audios: [],
       beats: [],
       name: "",
+      currentAudio: "5e5bb8afb8ccaa3a3231fe19b383cf98",
       recording: false
     };
     this.mediaRecorder;
     this.chunks;
+    this.device;
     this.startRecording = this.startRecording.bind(this);
     this.stopRecording = this.stopRecording.bind(this);
     this.handleNameSave = this.handleNameSave.bind(this);
     this.saveAudio = this.saveAudio.bind(this);
+    this.handleRecordPlay = this.handleRecordPlay.bind(this);
   }
 
   async componentDidMount() {
-    await navigator.mediaDevices.getUserMedia({ audio: true });
-    // this.audio.src = window.URL.createObjectURL(stream);
-    // this.audio.play();
-    // this.mediaRecorder = new MediaRecorder(stream);
-    // this.chunks = [];
-    // this.mediaRecorder.ondataavailable = e => {
-    //   if (e.data && e.data.size > 0) {
-    //     this.chunks.push(e.data);
-    //   }
-    // };
+    this.device = navigator.mediaDevices.getUserMedia({ audio: true });
   }
 
   startRecording(event) {
     event.preventDefault();
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    this.device.then(stream => {
       this.chunks = [];
       this.mediaRecorder = new MediaRecorder(stream);
       this.mediaRecorder.start(10);
@@ -52,23 +45,19 @@ class App extends React.Component {
 
   stopRecording(event, mediaRecorder) {
     event.preventDefault();
-    console.log(mediaRecorder);
     mediaRecorder.stop();
     this.setState({ recording: false });
-    this.saveAudio();
+    this.saveAudio(this.state.name);
   }
 
   handleNameSave(name) {
-    console.log(this.state.name);
     this.setState({ name: name });
   }
 
-  saveAudio() {
+  saveAudio(name) {
     event.preventDefault();
     const blob = new Blob(this.chunks, { type: "audio/mpeg-3" });
     const audioUrl = window.URL.createObjectURL(blob);
-    const audio = [this.state.name, audioUrl];
-    this.setState({ audios: [...this.state.audios, audio] });
     const fd = new FormData();
     fd.append("audio", blob);
     console.log(blob, fd);
@@ -87,22 +76,43 @@ class App extends React.Component {
       headers: { Accept: "application/json" },
       method: "POST",
       body: fd
-    }).then(data => {
-      console.log(data);
-    });
+    })
+      .then(data => {
+        const audio = [this.state.name, audioUrl];
+        return data.text();
+      })
+      .then(fileName => {
+        console.log(fileName);
+        this.setState({
+          audios: [...this.state.audios, [this.state.name, fileName]]
+        });
+      });
+  }
+
+  handleRecordPlay() {
+    this.refs.audio.pause();
+    this.refs.audio.load();
+    this.refs.audio.play();
   }
 
   render() {
     return (
       <div>
-        <div>Welcome to RapperProMo</div>
+        <div>Welcome to ProRecorderMo © Property of C.E.Mo</div>
+        <AudioPlayer
+          audio={this.state.currentAudio}
+          handleChange={this.handleRecordPlay}
+        />
         <Record
           start={this.startRecording}
           stop={this.stopRecording}
           mediaRecorder={this.mediaRecorder}
           saveName={this.handleNameSave}
         />
-        <RecordList audios={this.state.audios} />
+        <RecordList
+          audios={this.state.audios}
+          current={this.state.currentAudio}
+        />
       </div>
     );
   }
