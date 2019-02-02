@@ -4,6 +4,7 @@ import axios from "axios";
 import socketIOClient from "socket.io-client";
 import Record from "./components/record.jsx";
 import RecordList from "./components/recordList.jsx";
+import AudioPlayer from "./components/audioplayer.jsx";
 
 class App extends React.Component {
   constructor(props) {
@@ -65,12 +66,30 @@ class App extends React.Component {
   saveAudio() {
     event.preventDefault();
     const blob = new Blob(this.chunks, { type: "audio/mpeg-3" });
-    console.log(blob);
     const audioUrl = window.URL.createObjectURL(blob);
     const audio = [this.state.name, audioUrl];
     this.setState({ audios: [...this.state.audios, audio] });
-
-    axios.post();
+    const fd = new FormData();
+    fd.append("audio", blob);
+    console.log(blob, fd);
+    fd.forEach((value, key) => {
+      console.log("key %s: value %s", key, value);
+    });
+    // axios
+    //   .post("/api/format", {
+    //     "content-type": "multipart/form-data",
+    //     data: fd
+    //   })
+    //   .then(data => {
+    //     console.log("data");
+    //   });
+    fetch("/api/createAudio", {
+      headers: { Accept: "application/json" },
+      method: "POST",
+      body: fd
+    }).then(data => {
+      console.log(data);
+    });
   }
 
   render() {
